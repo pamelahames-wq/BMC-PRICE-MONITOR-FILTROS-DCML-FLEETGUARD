@@ -1,0 +1,4 @@
+# Bases com dados de clientes, custos e saídas: nunca versionar
+dados/
+cache/
+saida/
