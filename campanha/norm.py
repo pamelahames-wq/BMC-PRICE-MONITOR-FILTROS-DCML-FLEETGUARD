@@ -48,7 +48,7 @@ def telefones(x):
     out = []
     for parte in re.split(r"[/;,|]| e |\n", str(x)):
         d = so_digitos(parte)
-        if d.startswith("55") and len(d) in (12, 13):
+        while d.startswith("55") and len(d) > 11:
             d = d[2:]
         if d.startswith("0") and len(d) in (11, 12):
             d = d[1:]
