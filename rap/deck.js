@@ -12,7 +12,6 @@ const CLARO = "EEF2F8", BRANCO = "FFFFFF", TEXTO = "1D2633", VERMELHO = "B3261E"
 const COR_BALDE = { DESHOMOLOGAR: VERMELHO, REBAIXAR: "E07B00", INCENTIVAR: "2F7FC1", MANTER: VERDE };
 const BALDES = ["DESHOMOLOGAR", "REBAIXAR", "INCENTIVAR", "MANTER"];
 const FONT = "Arial";
-const IMPOSTOS = 0.22, DESC_BALCAO = 0.15;
 const PISO = { Standard: 0.20, Ouro: 0.30, Diamante: 0.45 };
 const TETO = { Standard: 0.25, Ouro: 0.40, Diamante: 0.55 };
 
@@ -83,22 +82,23 @@ pres.addSection({ title: "Abertura" }); sec = "Abertura";
 // 2 — Régua e descontos
 {
   const s = slideConteudo("Contexto", "Régua semestral e faixas de desconto", "RAP = vendedor preferencial ESILVA, SLUNA, PLOUREIRO ou FALEXANDRE + categoria Standard, Ouro ou Diamante");
-  const cats = [["Standard", 5000, "20% – 25%", "8A97AB"], ["Ouro", 40000, "30% – 40%", "C99A06"], ["Diamante", 100000, "45% – 55%", NAVY2]];
-  cats.forEach(([n, min, faixa, cor], i) => {
+  const cats = [["Standard", 5000, "20% – 25%", "8A97AB", "18–20%"], ["Ouro", 40000, "30% – 40%", "C99A06", "22–35%"], ["Diamante", 100000, "45% – 55%", NAVY2, "35–45%"]];
+  cats.forEach(([n, min, faixa, cor, hoje], i) => {
     const x = M + i * 4.1, y = 1.75;
-    card(s, x, y, 3.8, 2.55, CLARO, `card-${n}`);
+    card(s, x, y, 3.8, 2.8, CLARO, `card-${n}`);
     s.addShape(pres.shapes.OVAL, { x: x + 0.3, y: y + 0.3, w: 0.5, h: 0.5, fill: { color: cor }, line: { color: cor } });
     txt(s, n.toUpperCase(), { x: x + 0.95, y: y + 0.3, w: 2.7, h: 0.5, fontSize: 18, bold: true, color: NAVY, valign: "middle" });
     txt(s, "Mínimo no semestre", { x: x + 0.3, y: y + 1.0, w: 3.3, h: 0.3, fontSize: 12, color: CINZA });
     txt(s, rs(min), { x: x + 0.3, y: y + 1.28, w: 3.3, h: 0.5, fontSize: 26, bold: true, color: NAVY });
     txt(s, "Desconto sobre a tabela nova", { x: x + 0.3, y: y + 1.8, w: 3.3, h: 0.3, fontSize: 12, color: CINZA });
-    txt(s, faixa, { x: x + 0.3, y: y + 2.05, w: 3.3, h: 0.4, fontSize: 20, bold: true, color: TEXTO });
+    txt(s, faixa, { x: x + 0.3, y: y + 2.02, w: 3.3, h: 0.4, fontSize: 20, bold: true, color: TEXTO });
+    txt(s, `Tabela por grupo hoje: ${hoje}`, { x: x + 0.3, y: y + 2.42, w: 3.3, h: 0.3, fontSize: 11, color: CINZA });
   });
-  txt(s, "Como cada RAP é classificada (faturamento do semestre ÷ mínimo da categoria atual)", { x: M, y: 4.6, w: 12, h: 0.35, fontSize: 14, bold: true, color: NAVY });
+  txt(s, "Como cada RAP é classificada (faturamento do semestre ÷ mínimo da categoria atual)", { x: M, y: 4.72, w: 12, h: 0.35, fontSize: 14, bold: true, color: NAVY });
   const regras = [["DESHOMOLOGAR", "R$ 0 no semestre\n(ou Standard < 70%)"], ["REBAIXAR", "< 70% do mínimo\nDiamante → Ouro → Standard"], ["INCENTIVAR", "70% a 100%\nlista de contato"], ["MANTER", "≥ 100%\nsem mudança"]];
   regras.forEach(([b, t], i) => {
-    const x = M + i * 3.07, y = 5.05;
-    card(s, x, y, 2.85, 1.55, COR_BALDE[b], `regra-${b}`);
+    const x = M + i * 3.07, y = 5.15;
+    card(s, x, y, 2.85, 1.5, COR_BALDE[b], `regra-${b}`);
     txt(s, b, { x: x + 0.2, y: y + 0.15, w: 2.5, h: 0.4, fontSize: 15, bold: true, color: BRANCO });
     txt(s, t, { x: x + 0.2, y: y + 0.6, w: 2.5, h: 0.8, fontSize: 13, color: BRANCO, valign: "top" });
   });
@@ -203,24 +203,23 @@ pres.addSection({ title: "Abertura" }); sec = "Abertura";
 
 // 8 — Estudo de preço
 {
-  const s = slideConteudo("Preço e margem", "Preço da peça: Balcão vs Standard, Ouro e Diamante", "Preço novo de tabela menos o desconto de cada canal (piso da faixa RAP) · margem após 22% de impostos");
-  const cols = [["Balcão 15%", "balcao", DESC_BALCAO], ["Standard 20%", "Standard", PISO.Standard], ["Ouro 30%", "Ouro", PISO.Ouro], ["Diamante 45%", "Diamante", PISO.Diamante]];
-  const l = [[H("PN", { align: "left" }), H("Descrição", { align: "left" }), H("Grupo"), H("Custo"), H("Tabela"), ...cols.map((c) => H(c[0]))]];
+  const s = slideConteudo("Preço e margem", "Preço da peça: Balcão vs Standard, Ouro e Diamante", `Tabela nova − desconto do grupo da peça · margem = (preço − impostos − custo) ÷ preço · impostos reais: Balcão ${pct(D.imp_balcao)}, RAP ${pct(D.imp_rap)}`);
+  const cols = [["Balcão 15%", "balcao"], ["Standard", "Standard"], ["Ouro", "Ouro"], ["Diamante hoje", "Diamante"], ["Diamante sugerido", "sug"]];
+  const l = [[H("PN", { align: "left" }), H("Descrição", { align: "left" }), H("Grp"), H("Custo"), H("Tabela"), ...cols.map((c) => H(c[0], c[1] === "sug" ? { fill: { color: AMARELO }, color: NAVY } : {}))]];
   D.cesta.forEach((r) => {
-    const cel = cols.map(([, , d]) => {
-      const p = r.tab * (1 - d), liq = p * (1 - IMPOSTOS);
-      const m = r.custo > 0 ? (liq - r.custo) / liq : null;
-      return { text: [{ text: rs(p), options: { breakLine: true, fontSize: 10, color: TEXTO } }, { text: pct(m), options: { fontSize: 10, bold: true, color: corMargem(m) } }], options: { align: "center" } };
+    const cel = cols.map(([, k]) => {
+      const v = r[k];
+      return { text: [{ text: rs(v.p), options: { breakLine: true, fontSize: 9, color: TEXTO } }, { text: pct(v.m), options: { fontSize: 9, bold: true, color: corMargem(v.m) } }, { text: k === "balcao" ? "" : `  · ${Math.round(v.d * 100)}%`, options: { fontSize: 8, color: CINZA } }], options: { align: "center" } };
     });
-    l.push([C(r.pn, { fontSize: 9 }), C(r.desc.slice(0, 28), { fontSize: 9 }), C(r.grupo, { align: "center", fontSize: 9 }), C(rs(r.custo), { align: "right", fontSize: 9 }), C(rs(r.tab), { align: "right", fontSize: 9 }), ...cel]);
+    l.push([C(r.pn, { fontSize: 9 }), C(r.desc.slice(0, 26), { fontSize: 9 }), C(r.grupo, { align: "center", fontSize: 9 }), C(rs(r.custo), { align: "right", fontSize: 9 }), C(rs(r.tab), { align: "right", fontSize: 9 }), ...cel]);
   });
-  tabela(s, l, { x: M, y: 1.5, w: W - 2 * M, colW: [1.45, 2.7, 0.65, 1.15, 1.15, 1.25, 1.25, 1.25, 1.28], rowH: 0.34, margin: [0.01, 0.05, 0.01, 0.05] });
-  txt(s, "Margem: verde ≥ 25% · laranja 10–25% · vermelho < 10%. No teto da faixa (25/40/55%) a margem cai mais — ver aba “Estudo de preço”.", { x: M, y: 6.62, w: W - 2 * M, h: 0.3, fontSize: 10, italic: true, color: CINZA });
+  tabela(s, l, { x: M, y: 1.5, w: 11.95, colW: [1.35, 2.2, 0.5, 1.0, 1.05, 1.17, 1.17, 1.17, 1.17, 1.17], rowH: 0.34, margin: [0.01, 0.04, 0.01, 0.04] });
+  txt(s, "Em cada célula: preço · margem · desconto do grupo. Verde ≥ 25% · laranja 10–25% · vermelho < 10%. Bombas e filtros de motor ficam negativos no Diamante mesmo com o grupo acima do piso: o teto por grupo não protege cada PN.", { x: M, y: 6.62, w: W - 2 * M, h: 0.3, fontSize: 10, italic: true, color: CINZA });
 }
 
 // 9 — Margem por categoria
 {
-  const s = slideConteudo("Preço e margem", "Margem das RAPs por categoria no semestre", "NFs de venda − devoluções · margem = receita líquida de impostos − custo · nenhum item ficou sem custo");
+  const s = slideConteudo("Preço e margem", "Margem das RAPs por categoria no semestre", "NFs de venda − devoluções · margem = (NF − impostos − custo) ÷ NF, mesma conta da Reestruturação de Margem");
   const tot = D.margem.reduce((a, m) => a + m.fat, 0);
   D.margem.forEach((m, i) => {
     const x = M + i * 4.1, y = 1.65;
@@ -237,48 +236,67 @@ pres.addSection({ title: "Abertura" }); sec = "Abertura";
   });
 }
 
-// 10 — Recomendação
+// 10 — Margem real por grupo
+{
+  const G = D.grupos_n;
+  const s = slideConteudo("Preço e margem", "Desconto por grupo: onde a margem não fecha", "Tabela atual de desconto por grupo × margem com o imposto real das NFs RAP");
+  const kpis = [[String(G.negD), "grupos com margem negativa no Diamante com o desconto atual", VERMELHO], [`${pct(0.1333)} × ${pct(D.imp_rap)}`, "imposto usado na planilha de margem × imposto real das NFs RAP", "C77700"], [String(G.muda), `grupos precisam de desconto menor para manter ${Math.round(D.piso * 100)}% de margem`, NAVY]];
+  kpis.forEach(([v, t, cor], i) => {
+    const y = 1.6 + i * 1.62;
+    card(s, M, y, 3.6, 1.45, CLARO, `kpi-grupo-${i}`);
+    txt(s, v, { x: M + 0.2, y: y + 0.1, w: 3.2, h: 0.65, fontSize: i === 1 ? 26 : 36, bold: true, color: cor, valign: "middle" });
+    txt(s, t, { x: M + 0.2, y: y + 0.78, w: 3.25, h: 0.6, fontSize: 11, color: TEXTO, valign: "top" });
+  });
+  const l = [[H("Grupo", { align: "left" }), H("Fat. RAP"), H("Desc. Dia."), H("Margem planilha"), H("Margem real"), H("Desc. sugerido", { fill: { color: AMARELO }, color: NAVY })]];
+  D.grupos_neg.slice(0, 11).forEach((g) => l.push([C(g.g.slice(0, 30), { fontSize: 10 }), C(rs(g.fat), { align: "right", fontSize: 10 }), C(`${Math.round(g.d * 100)}%`, { align: "center", fontSize: 10 }), C(pct(g.mplan), { align: "center", fontSize: 10 }), C(pct(g.mreal), { align: "center", fontSize: 10, bold: true, color: corMargem(g.mreal) }), C(`${Math.round(g.sug * 100)}%`, { align: "center", fontSize: 11, bold: true, color: NAVY })]));
+  tabela(s, l, { x: 4.5, y: 1.6, w: 8.23, colW: [2.85, 1.2, 0.95, 1.1, 1.03, 1.1], rowH: 0.38 });
+  txt(s, "Ficam como estão (margem real ≥ 14% no Diamante): " + D.grupos_ok.map((g) => g.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase()).slice(0, 28)).join(" · "), { x: 4.5, y: 6.25, w: 8.23, h: 0.6, fontSize: 10, italic: true, color: CINZA, valign: "top" });
+}
+
+// 11 — Recomendação
 {
   const s = slideConteudo("Recomendação", "Recomendação de desconto por categoria", "Para decisão da Pam e do Alexandre — não é corte automático");
   ["Diamante", "Ouro", "Standard"].forEach((cat, i) => {
     const r = D.rec[cat], m = D.margem.find((x) => x.cat === cat);
-    const x = M + i * 4.1, y = 1.65;
-    card(s, x, y, 3.8, 3.75, CLARO, `rec-${cat}`);
+    const x = M + i * 4.1, y = 1.6;
+    card(s, x, y, 3.8, 4.0, CLARO, `rec-${cat}`);
     txt(s, cat.toUpperCase(), { x: x + 0.25, y: y + 0.18, w: 3.3, h: 0.35, fontSize: 15, bold: true, color: NAVY });
-    txt(s, `Faixa ${Math.round(PISO[cat] * 100)}–${Math.round(TETO[cat] * 100)}% · ` + (r.desc_ef > 0.01 ? `praticado hoje ≈ ${Math.round(r.desc_ef * 100)}%` : "NF sai ≈ preço de tabela"), { x: x + 0.25, y: y + 0.55, w: 3.4, h: 0.3, fontSize: 11, color: CINZA });
-    txt(s, r.faixa_txt, { x: x + 0.25, y: y + 0.9, w: 3.3, h: 0.85, fontSize: 48, bold: true, color: NAVY });
-    txt(s, "desconto recomendado", { x: x + 0.25, y: y + 1.72, w: 3.3, h: 0.3, fontSize: 12, color: CINZA });
+    txt(s, `Régua ${Math.round(PISO[cat] * 100)}–${Math.round(TETO[cat] * 100)}% · ` + (r.desc_ef > 0.01 ? `praticado hoje ≈ ${Math.round(r.desc_ef * 100)}%` : "NF sai ≈ preço de tabela"), { x: x + 0.25, y: y + 0.52, w: 3.4, h: 0.3, fontSize: 11, color: CINZA });
+    txt(s, r.titulo, { x: x + 0.25, y: y + 0.85, w: 3.3, h: 0.8, fontSize: 44, bold: true, color: NAVY });
+    txt(s, r.sub, { x: x + 0.25, y: y + 1.62, w: 3.4, h: 0.3, fontSize: 11, color: CINZA });
     txt(s, [
       { text: "Margem hoje ", options: { color: CINZA } }, { text: pct(m.mp), options: { bold: true, color: corMargem(m.mp), breakLine: true } },
-      { text: "No recomendado ", options: { color: CINZA } }, { text: pct(r.m_rec), options: { bold: true, color: corMargem(r.m_rec), breakLine: true } },
-      { text: "No teto da faixa ", options: { color: CINZA } }, { text: pct(r.m_teto), options: { bold: true, color: corMargem(r.m_teto) } },
-    ], { x: x + 0.25, y: y + 2.1, w: 3.3, h: 0.95, fontSize: 13 });
-    txt(s, r.justificativa.split(" → ")[1] ? "→ " + r.justificativa.split(" → ")[1] : r.justificativa, { x: x + 0.25, y: y + 3.15, w: 3.35, h: 1.3, fontSize: 12, color: TEXTO, valign: "top" });
+      { text: "Com teto por grupo ", options: { color: CINZA } }, { text: pct(r.m_teto_grupo), options: { bold: true, color: corMargem(r.m_teto_grupo), breakLine: true } },
+      { text: "No teto da régua ", options: { color: CINZA } }, { text: pct(r.m_teto), options: { bold: true, color: corMargem(r.m_teto) } },
+    ], { x: x + 0.25, y: y + 2.0, w: 3.3, h: 0.95, fontSize: 13 });
+    txt(s, r.acao, { x: x + 0.25, y: y + 3.05, w: 3.35, h: 0.85, fontSize: 12, bold: true, color: TEXTO, valign: "top" });
   });
-  card(s, M, 5.75, W - 2 * M, 0.8, "FFF4CC", "alerta");
-  txt(s, "Atenção: a faixa Diamante de 45–55% fica acima do que se pratica hoje (≈36%). Aplicada no teto, a categoria que traz 94% do faturamento RAP passa a dar prejuízo.", { x: M + 0.2, y: 5.8, w: W - 2 * M - 0.4, h: 0.7, fontSize: 14, bold: true, color: "7A5200", valign: "middle" });
+  card(s, M, 5.8, W - 2 * M, 0.8, "FFF4CC", "alerta");
+  txt(s, `A régua Diamante de 45–55% não fecha: no teto a categoria que traz 94% do faturamento RAP fica com margem ${pct(D.rec.Diamante.m_teto)}. Manter a tabela por grupo e baixar o desconto só nos ${D.grupos_n.muda} grupos fracos.`, { x: M + 0.2, y: 5.85, w: W - 2 * M - 0.4, h: 0.7, fontSize: 13, bold: true, color: "7A5200", valign: "middle" });
 }
 
-// 11 — Próximos passos
+// 12 — Próximos passos
 pres.addSection({ title: "Encerramento" });
 {
   const s = pres.addSlide({ masterName: "ESCURO", sectionTitle: "Encerramento" });
-  txt(s, "Próximos passos", { x: M, y: 0.5, w: 11, h: 0.9, fontSize: 36, bold: true, color: BRANCO });
+  txt(s, "Próximos passos", { x: M, y: 0.4, w: 11, h: 0.9, fontSize: 36, bold: true, color: BRANCO });
   const passos = [
     ["Aprovar", "Pam e Alexandre validam baldes e descontos por categoria"],
     ["Revisar", `${D.desh_1s.n} RAPs em DESHOMOLOGAR que compraram no 1º sem e as ${D.baldes.INCENTIVAR.n} de INCENTIVAR, com os consultores`],
     ["Corrigir cadastro", `${D.inconsistentes.cat_sem_vend} clientes com categoria RAP sem vendedor RAP e ${D.inconsistentes.vend_sem_cat} RAPs sem categoria válida`],
     ["Comunicar", "E-mails de encerramento e de nova categoria — só depois da aprovação"],
-    ["Atualizar o Sankhya", "AD_CLASSRAP e vendedor preferencial conforme a decisão"],
+    ["Ajustar a tabela por grupo", `Baixar o desconto de ${D.grupos_n.muda} grupos para manter ${Math.round(D.piso * 100)}% de margem (aba “Desconto por grupo”)`],
+    ["Atualizar o Sankhya", "AD_CLASSRAP, vendedor preferencial e descontos conforme a decisão"],
     ["Fechar o semestre", "Rodar de novo com as NFs até 31/12 antes de efetivar (hoje: 108 de 184 dias)"],
+    ["Recalcular margem do Balcão", "Mesma conta com o imposto real, para revisar a tabela de margens"],
   ];
   passos.forEach(([t, d], i) => {
     const col = i % 2, row = Math.floor(i / 2);
-    const x = M + col * 6.15, y = 1.65 + row * 1.6;
+    const x = M + col * 6.15, y = 1.5 + row * 1.3;
     s.addShape(pres.shapes.OVAL, { x, y, w: 0.7, h: 0.7, fill: { color: AMARELO }, line: { color: AMARELO } });
     txt(s, String(i + 1), { x, y, w: 0.7, h: 0.7, fontSize: 22, bold: true, color: NAVY, align: "center", valign: "middle" });
     txt(s, t, { x: x + 0.9, y: y - 0.02, w: 5.0, h: 0.4, fontSize: 18, bold: true, color: AMARELO });
-    txt(s, d, { x: x + 0.9, y: y + 0.4, w: 5.0, h: 0.85, fontSize: 14, color: BRANCO, valign: "top" });
+    txt(s, d, { x: x + 0.9, y: y + 0.4, w: 5.0, h: 0.75, fontSize: 13, color: BRANCO, valign: "top" });
   });
 }
 

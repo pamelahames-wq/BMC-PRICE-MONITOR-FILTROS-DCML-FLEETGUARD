@@ -6,6 +6,7 @@ d_Precos, f_CustoUnitarioProd). Tabela de grupos/descontos em rap/grupos.tsv.
 """
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from unidecode import unidecode
 
@@ -24,7 +25,8 @@ MINIMO = {"Standard": 5_000, "Ouro": 40_000, "Diamante": 100_000}
 FAIXA = {"Standard": (0.20, 0.25), "Ouro": (0.30, 0.40), "Diamante": (0.45, 0.55)}
 REBAIXA = {"Diamante": "Ouro", "Ouro": "Standard", "Standard": "Encerrar"}
 DESC_BALCAO = 0.15
-IMPOSTOS = 0.22        # média IMPOSTOS/BRUTO das NFs RAP 2026 (f_Notas) — usado só no estudo de preço
+IMP_PLANILHA = 0.1333  # imposto implícito nas colunas "Margem RAP" da Reestruturação de Margem 2026
+PISO_MARGEM = 0.05     # margem mínima por grupo na venda RAP (proposta; editável na planilha)
 BALDES = ["DESHOMOLOGAR", "REBAIXAR", "INCENTIVAR", "MANTER"]
 
 
@@ -165,10 +167,53 @@ def margem(itens, chaves):
                                   receita_liq=("receita_liq", "sum"))
     b = com.groupby(chaves).agg(receita_c_custo=("receita_liq", "sum"), custo=("custo_total", "sum"))
     m = a.join(b).fillna(0)
+    nf = com.groupby(chaves).fat_nf.sum().rename("fat_c_custo")
+    m = m.join(nf).fillna(0)
     m["margem_rs"] = m.receita_c_custo - m.custo
-    m["margem_pct"] = m.margem_rs / m.receita_c_custo.where(m.receita_c_custo != 0)
+    # mesma convenção da Reestruturação de Margem: (NF − impostos − custo) ÷ NF
+    m["margem_pct"] = m.margem_rs / m.fat_c_custo.where(m.fat_c_custo != 0)
     m["cobertura_custo"] = m.receita_c_custo / m.receita_liq.where(m.receita_liq != 0)
     return m.reset_index()
+
+
+def impostos(it):
+    """IMPOSTOS ÷ BRUTO nas vendas do semestre: RAP (1030207) e Balcão (demais centros de peças)."""
+    v = it[(it.sinal > 0) & (it.DT >= INICIO) & (it.DT <= FIM)]
+    rap = v.CODCENCUS == "1030207"
+    return (v[rap].IMPOSTOS.sum() / v[rap].BRUTO.sum(), v[~rap].IMPOSTOS.sum() / v[~rap].BRUTO.sum())
+
+
+def descontos_grupo():
+    """Aba "Resumo por grupo" da Reestruturacao_Margem_2026_FINAL.xlsx (cópia em cache/raw)."""
+    g = pd.read_csv(RAW / "resumo_margem_grupos.tsv", sep="\t", dtype=str)
+    g.columns = ["n1", "cod", "grupo", "itens", "m_atual", "m_15", "dS", "dO", "dD", "mb", "mS", "mO", "mD"]
+    for c in ["m_atual", "m_15", "dS", "dO", "dD", "mb", "mS", "mO", "mD"]:
+        g[c] = pd.to_numeric(g[c].str.rstrip("%"), errors="coerce") / 100
+    g = g.dropna(subset=["dD"])
+    # custo ÷ tabela que a planilha assume: preço novo dá a margem nova no Balcão (15%) com 13,33% de imposto
+    g["r_plan"] = (1 - IMP_PLANILHA - g.mb) * (1 - DESC_BALCAO)
+    return g
+
+
+def margem_grupos(itens, pre, imp_rap, piso=PISO_MARGEM, min_fat=5000):
+    """Margem real por grupo com o desconto atual da tabela e o desconto máximo que respeita o piso."""
+    g = descontos_grupo()
+    v = itens[itens.sinal > 0].merge(pre[["CODPROD", "preco"]], on="CODPROD")
+    v["tab"] = v.preco * v.QTDNEG
+    s = v.groupby("CODGRUPOPROD").agg(fat=("BRUTO", "sum"), imp=("IMPOSTOS", "sum"), tab=("tab", "sum"),
+                                       cst=("custo_total", "sum"))
+    g = g.merge(s, left_on="cod", right_index=True, how="left")
+    real = g.fat >= min_fat
+    g["imp"] = (g.imp / g.fat).where(real, imp_rap)
+    g["r"] = (g.cst / g.tab).where(real, g.r_plan)
+    g["fonte"] = np.where(real, "NFs RAP 2º sem", "planejado (pouca venda RAP)")
+    g["fat"] = g.fat.fillna(0)
+    for k in "SOD":
+        g["m" + k + "_real"] = 1 - g.imp - g.r / (1 - g["d" + k])
+        g["sug" + k] = np.minimum(g["d" + k], np.floor((1 - g.r / (1 - g.imp - piso)) * 100) / 100).clip(lower=0)
+        g["m" + k + "_sug"] = 1 - g.imp - g.r / (1 - g["sug" + k])
+    g["muda"] = (g.sugS < g.dS) | (g.sugO < g.dO) | (g.sugD < g.dD)
+    return g.sort_values("fat", ascending=False)
 
 
 def desconto_efetivo(itens, pre):
@@ -186,7 +231,7 @@ CESTA = [  # (CODGRUPOPROD, quantos itens) — mais faturados em 2026 em cada gr
 ]
 
 
-def cesta(it, pro, pre, cu):
+def cesta(it, pro, pre, cu, mg):
     venda = it[it.sinal > 0].groupby("CODPROD").agg(fat_2026=("BRUTO", "sum"), qtd_2026=("QTDNEG", "sum"))
     atual = cu.sort_values("DT").groupby("CODPROD").custo.last()
     p = pro.merge(pre[["CODPROD", "preco"]], on="CODPROD").join(venda, on="CODPROD")
@@ -196,8 +241,9 @@ def cesta(it, pro, pre, cu):
     for grp, n in CESTA:
         g = p[p.CODGRUPOPROD == grp].sort_values("fat_2026", ascending=False)
         out.append(g[g.custo.notna()].head(n))
-    return pd.concat(out)[["REFERENCIA", "CODPROD", "DESCRPROD", "CODGRUPOPROD", "grupo",
-                           "custo", "preco", "fat_2026", "qtd_2026"]]
+    c = pd.concat(out).merge(mg[["cod", "dS", "dO", "dD", "sugD"]], left_on="CODGRUPOPROD", right_on="cod")
+    return c[["REFERENCIA", "CODPROD", "DESCRPROD", "CODGRUPOPROD", "grupo", "custo", "preco", "fat_2026",
+              "qtd_2026", "dS", "dO", "dD", "sugD"]]
 
 
 def rodar():
@@ -207,14 +253,19 @@ def rodar():
     fs = faturamento(fat, INICIO, FIM)
     inconsistente["fat"] = inconsistente.CODPARC.map(fs).fillna(0).round(2)
     itens = itens_rap(it, cu, pro, rap)
+    imp_rap, imp_balcao = impostos(it)
+    mg = margem_grupos(itens, pre, imp_rap)
     return {
+        "imp_rap": imp_rap,
+        "imp_balcao": imp_balcao,
+        "grupos": mg,
         "classificacao": cls,
         "inconsistente": inconsistente,
         "itens": itens,
         "margem_cat": margem(itens, ["categoria"]),
         "margem_cat_grupo": margem(itens, ["categoria", "CODGRUPOPROD", "grupo"]),
         "desc_efetivo": desconto_efetivo(itens, pre),
-        "cesta": cesta(it, pro, pre, cu),
+        "cesta": cesta(it, pro, pre, cu, mg),
         "data_max": fat.DT.max(),
     }
 
