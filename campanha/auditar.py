@@ -157,7 +157,7 @@ def auditar(rep, nov):
         if len(base) >= 6 and len(mesmos):
             add("Novos", r, "24", "Mesmo nome com outro CNPJ/CPF em Repetição (conta separado pela regra; confirmar se não é o mesmo comprador)",
                 ", ".join(f"{x.doc} ({x.Consultor})" for x in mesmos.itertuples()))
-        if r["tel"] and r["tel"] in set(rep.tel):
+        if r["tel"] and r["tel"] not in internos and tel_docs.get(r["tel"], 0) < 3 and r["tel"] in set(rep.tel):
             outros = rep[(rep.tel == r["tel"]) & (rep.doc != d)]
             if len(outros):
                 add("Novos", r, "25", "Mesmo telefone de um cliente de Repetição (provável mesmo comprador de peças)",
