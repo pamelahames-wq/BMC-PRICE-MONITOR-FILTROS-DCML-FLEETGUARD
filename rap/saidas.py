@@ -527,7 +527,7 @@ def deck_json(r, mc, rec_num):
     out["consultor"] = {k: {b: int(((c.consultor == k) & (c.balde == b)).sum()) for b in A.BALDES} for k in cons}
     out["consultor_fat"] = {k: float(c[c.consultor == k].fat.sum()) for k in cons}
     d = c[c.balde == "DESHOMOLOGAR"]
-    out["desh_1s"] = {"n": int((d.fat_1s > 0).sum()), "fat": float(d.fat_1s.sum())}
+    out["desh_1s"] = {"n": int((d.fat_1s > 0).sum()), "fat": float(d[d.fat_1s > 0].fat_1s.sum())}
     out["desh_std_baixo"] = int((d.motivo == "Standard abaixo de 70% do mínimo").sum())
     out["desh_cons_cat"] = {k: {cat: int(((d.consultor == k) & (d.categoria == cat)).sum())
                                 for cat in A.CATEGORIAS} for k in cons}
