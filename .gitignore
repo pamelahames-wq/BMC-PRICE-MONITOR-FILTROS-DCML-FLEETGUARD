@@ -4,3 +4,4 @@ cache/
 saida/
 __pycache__/
 *.pyc
+node_modules/
