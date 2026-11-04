@@ -126,6 +126,19 @@ def escrever(lista, com_venda, arq):
                         c.number_format = '"R$" #,##0.00'
 
 
+def escrever_anexo(lista, arq):
+    df = lista[["Part Number", "Descrição", "Categoria Black Friday"]]
+    df.columns = ["Part Number", "Description", "Category"]
+    with pd.ExcelWriter(arq, engine="openpyxl") as w:
+        df.to_excel(w, sheet_name="Parts List", index=False)
+        ws = w.sheets["Parts List"]
+        for c in ws[1]:
+            c.font, c.fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="002C5F")
+        for col, larg in zip("ABC", (20, 45, 32)):
+            ws.column_dimensions[col].width = larg
+        ws.freeze_panes, ws.auto_filter.ref = "A2", ws.dimensions
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("planilha", nargs="?", default=RAIZ / "dados" / "Reestruturacao_Margem_2026_FINAL.xlsx")
@@ -135,6 +148,8 @@ def main():
     lista, com_venda = selecionar(a.planilha, a.top)
     Path(a.saida).parent.mkdir(parents=True, exist_ok=True)
     escrever(lista, com_venda, a.saida)
+    anexo = Path(a.saida).with_name("BlackFriday_Parts_Question_Anexo.xlsx")
+    escrever_anexo(lista, anexo)
     print(f"{len(lista)} PNs | venda 12m: {'sim' if com_venda else 'base ausente (status OK)'} -> {a.saida}")
 
 
